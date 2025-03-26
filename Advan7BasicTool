@@ -1,0 +1,36 @@
+#!/bin/bash
+#----------------------------------------------------------------------------
+# Project	: Advan7BasicTool
+#----------------------------------------------------------------------------
+# Date		: 25/03/2025
+#----------------------------------------------------------------------------
+# WheremI	: /home/sapo
+#----------------------------------------------------------------------------
+# CreatedBy	: ADVAN7Sapo | https://github.com/Advan7Sapo
+#----------------------------------------------------------------------------
+if [ "$EUID" -ne 0 ]; then
+    echo "Este script deve ser executado como root."
+    exit 1
+fi
+if [ -z "$DISPLAY" ]; then
+    echo "Erro: Variável DISPLAY não configurada. Configure-a (ex: export DISPLAY=:0) e tente novamente."
+    exit 1
+fi
+ORIGINAL_USER=$SUDO_USER
+ORIG_DISPLAY=$DISPLAY
+
+# Instalações e atualizações
+apt-get update && apt-get upgrade -y
+apt install -y tor proxychains4 macchanger
+
+# Configura o Tor
+systemctl enable --now tor
+systemctl start --now tor 
+# Spoofing MAC
+ifconfig eth0 down
+macchanger eth0 -r
+ifconfig eth0 up
+
+# Proxychains4
+sudo -u "$ORIGINAL_USER" env "DISPLAY=$ORIG_DISPLAY" proxychains4 firefox
+
