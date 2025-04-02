@@ -4,21 +4,19 @@
 #----------------------------------------------------------------------------
 # Date		: 25/03/2025
 #----------------------------------------------------------------------------
-# WheremI	: /home/sapo
+# CreatedBy	: ADVAN7 Offensive Security
 #----------------------------------------------------------------------------
-# CreatedBy	: ADVAN7Sapo | https://github.com/Advan7Sapo
-#----------------------------------------------------------------------------
-clear 
+
+clear
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt install anonsurf -y
 sudo apt install tor -y
 sudo apt install macchanger -y
 
-# MAC Spoofing
-# Verifica root
-if [ "$EUID" -ne 0 ]; then
-    echo "Execute como root: sudo $0"
+# Verifica se o script está sendo executado como root
+if [[ $EUID -ne 0 ]]; then
+    echo "Este script deve ser executado como root: sudo $0"
     exit 1
 fi
 
@@ -93,18 +91,13 @@ check_dependencies() {
     local missing=()
     command -v anonsurf &> /dev/null || missing+=("anonsurf")
     command -v shred &> /dev/null || missing+=("shred")
+    command -v firefox &> /dev/null || missing+=("firefox")
     
     if [[ ${#missing[@]} -gt 0 ]]; then
         echo "Erro: Dependências ausentes: ${missing[*]}" >&2
         exit 1
     fi
 }
-
-# Verifica se o script está sendo executado como root
-if [[ $EUID -ne 0 ]]; then
-    echo "Este script deve ser executado como root!" >&2
-    exit 1
-fi
 
 # Verifica dependências antes de iniciar
 check_dependencies
@@ -127,6 +120,22 @@ rotate_log() {
         touch "$LOG_FILE"
         chmod 600 "$LOG_FILE"
     fi
+}
+
+# Função para verificar se o usuário está seguro
+is_user_secure() {
+    if anonsurf status | grep -q "enabled"; then
+        return 0  # Seguro
+    else
+        return 1  # Não seguro
+    fi
+}
+
+# Função para abrir o Firefox em modo privado
+open_private_firefox() {
+    local url="https://check.torproject.org"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Abrindo Firefox em modo privado com URL: $url" | tee -a "$LOG_FILE"
+    firefox --private-window "$url" &>/dev/null &
 }
 
 # Função para limpeza segura
@@ -155,6 +164,14 @@ while true; do
         echo "$(date '+%Y-%m-%d %H:%M:%S') - ERRO: Falha na troca de identidade. Verifique o sistema." | tee -a "$LOG_FILE"
         sleep 10  # Espera antes de tentar novamente
         continue
+    fi
+
+    # Verifica se o usuário está seguro e abre o Firefox
+    if is_user_secure; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Usuário está seguro. Abrindo Firefox em modo privado." | tee -a "$LOG_FILE"
+        open_private_firefox
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Usuário não está seguro. Firefox não será aberto." | tee -a "$LOG_FILE"
     fi
     
     # Aguarda intervalo com checagem ativa

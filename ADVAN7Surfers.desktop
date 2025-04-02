@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=ADVAN7Surfers
+Comment=Executa o script ADVAN7Surfers como root
+Exec=pkexec bash /home/$USER/Desktop/ADVAN7Surfers
+Icon=utilities-terminal
+Terminal=true
+Type=Application
+Categories=Utility;
