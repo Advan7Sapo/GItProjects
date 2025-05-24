@@ -1,0 +1,17 @@
+[Unit]
+Description=Cyber Defense System
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/sapo/GitProjects
+ExecStart=/home/sapo/GitProjects/.env/bin/python /home/sapo/GitProjects/plaintext.py
+Restart=always
+RestartSec=5
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=cyberdefense
+
+[Install]
+WantedBy=multi-user.target

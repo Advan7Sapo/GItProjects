@@ -11,11 +11,11 @@ header="#!/bin/bash
 #----------------------------------------------------------------------------
 # WheremI	: $whrmi
 #----------------------------------------------------------------------------
-# CreatedBy	: ADVAN7Sapo | https://github.com/Advan7Sapo
+# CreatedBy	: ADVAN7 Offensive Security | https://github.com/Advan7Sapo
 #----------------------------------------------------------------------------
 "
 clear
 echo "$header" > $1
 chmod 755 $1
-nano $1
+gedit $1
 
