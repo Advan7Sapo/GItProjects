@@ -112,7 +112,8 @@ fi
 # Função para gestão segura de logs
 rotate_log() {
     if [[ -f "$LOG_FILE" && $(stat -c %s "$LOG_FILE") -ge $MAX_LOG_SIZE ]]; then
-        local timestamp=$(date +%Y%m%d%H%M%S)
+        local timestamp
+        timestamp=$(date +%Y%m%d%H%M%S)
         local old_log="${LOG_FILE}.${timestamp}.gz"
         
         echo "$(date '+%Y-%m-%d %H:%M:%S') - Rotacionando arquivo de log" >> "$LOG_FILE"
