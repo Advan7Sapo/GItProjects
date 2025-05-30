@@ -1,0 +1,81 @@
+#!/bin/bash
+#----------------------------------------------------------------------------
+# Project	: KaliAurora
+#----------------------------------------------------------------------------
+# Date		: 30/05/2025
+#----------------------------------------------------------------------------
+# WheremI	: /home/sapo/Desktop/GitProjects
+#----------------------------------------------------------------------------
+# CreatedBy	: ADVAN7 Offensive Security | https://github.com/Advan7Sapo
+#----------------------------------------------------------------------------
+#!/bin/bash
+#----------------------------------------------------------------------------
+#!/bin/bash
+update_system() {
+    sudo apt update && sudo apt -y full-upgrade
+    sudo apt -y autoremove
+}
+
+detect_gpu() {
+    gpu=""
+    if lspci | grep -iq 'nvidia'; then
+        gpu="nvidia"
+    elif lspci | grep -iq 'amd'; then
+        gpu="amd"
+    elif lspci | grep -iq 'intel'; then
+        gpu="intel"
+    else
+        gpu=""
+    fi
+}
+
+install_drivers() {
+    case "$gpu" in
+        nvidia)
+            sudo apt update
+            sudo apt install -y nvidia-driver
+            ;;
+        amd)
+            sudo apt update
+            sudo apt install -y firmware-amd-graphics
+            ;;
+        intel)
+            sudo apt update
+            sudo apt install -y intel-microcode
+            ;;
+        *)
+            echo "GPU not recognized or not supported: $gpu"
+            ;;
+    esac
+}
+
+install_flatpak() {
+    sudo apt update
+    sudo apt install -y flatpak gnome-software-plugin-flatpak
+    sudo flatpak remote-add --if-not-exists flathub \
+        "https://flathub.org/repo/flathub.flatpakrepo"
+}
+
+configure_gnome() {
+    sudo apt update
+    sudo apt install -y gnome-tweaks gnome-shell-extensions
+    gsettings set org.gnome.desktop.interface enable-animations false
+}
+
+configure_fan() {
+    sudo apt update
+    sudo apt install -y lm-sensors fancontrol
+    sudo sensors-detect --auto
+    sudo systemctl enable --now fancontrol
+}
+
+main() {
+    update_system
+    detect_gpu
+    install_drivers
+    install_flatpak
+    configure_gnome
+    configure_fan
+}
+
+main "$@"
