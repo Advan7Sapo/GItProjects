@@ -1,35 +1,54 @@
 #!/bin/bash
 
-echo "[+] Removendo LightDM, XFCE e greeters antigos..."
-systemctl disable lightdm 2>/dev/null
-pacman -Rns --noconfirm lightdm lightdm-gtk-greeter xfce4 xfce4-goodies
+echo "[+] Atualizando pacman.conf para garantir acesso aos repositórios essenciais..."
+sed -i '/^\[extra\]/,/^$/s/^#//' /etc/pacman.conf
+sed -i '/^\[community\]/,/^$/s/^#//' /etc/pacman.conf
 
-echo "[+] Atualizando o sistema..."
-pacman -Syu --noconfirm
+echo "[+] Sincronizando pacotes..."
+pacman -Sy --noconfirm
 
-echo "[+] Instalando Hyprland e pacotes essenciais para pentest e VM..."
-pacman -S --noconfirm \
-  hyprland xorg-xwayland xorg-xinit \
-  xdg-desktop-portal-hyprland waybar rofi \
-  alacritty kitty neofetch \
-  network-manager-applet polkit-gnome pipewire wireplumber \
-  pavucontrol brightnessctl wl-clipboard grim slurp \
-  ttf-font-awesome ttf-jetbrains-mono noto-fonts \
-  virtualbox-guest-utils xf86-video-vmware nautilus flameshot lxappearance
+echo "[+] Removendo drivers quebrados (vmware)..."
+pacman -Rns --noconfirm xf86-video-vmware
 
-echo "[+] Ativando suporte à integração VirtualBox..."
+echo "[+] Instalando drivers de vídeo e integração para VirtualBox..."
+pacman -S --noconfirm virtualbox-guest-utils xf86-video-vesa xf86-video-fbdev
 systemctl enable vboxservice
 systemctl start vboxservice
 
-echo "[+] Configurando .xinitrc para fallback de inicialização..."
-echo "exec Hyprland" > ~/.xinitrc
+echo "[+] Instalando base para compilação (yay)..."
+pacman -S --noconfirm git base-devel
 
-echo "[+] Criando configuração personalizada do Hyprland..."
-mkdir -p ~/.config/hypr
+if [ ! -d /opt/yay ]; then
+  cd /opt
+  git clone https://aur.archlinux.org/yay.git
+  chown -R $USER:$USER yay
+  cd yay
+  sudo -u $USER makepkg -si --noconfirm
+else
+  echo "[i] yay já instalado."
+fi
 
-cat > ~/.config/hypr/hyprland.conf <<EOF
-# Hyprland Config - Pentest VM Optimized
+echo "[+] Instalando Hyprland via AUR..."
+sudo -u $USER yay -S hyprland-git --noconfirm
 
+echo "[+] Instalando dependências gráficas essenciais..."
+pacman -S --noconfirm xorg-xwayland xorg-xinit xdg-desktop-portal-hyprland \
+  waybar rofi alacritty kitty neofetch network-manager-applet \
+  polkit-gnome pipewire wireplumber pavucontrol brightnessctl \
+  wl-clipboard grim slurp nautilus flameshot lxappearance \
+  ttf-font-awesome ttf-jetbrains-mono noto-fonts
+
+echo "[+] Removendo LightDM e XFCE caso ainda existam..."
+systemctl disable lightdm 2>/dev/null
+pacman -Rns --noconfirm lightdm lightdm-gtk-greeter xfce4 xfce4-goodies
+
+echo "[+] Criando .xinitrc para fallback..."
+echo "exec Hyprland" > /root/.xinitrc
+cp /root/.xinitrc /home/$USER/.xinitrc 2>/dev/null
+
+echo "[+] Aplicando configuração personalizada do Hyprland..."
+mkdir -p /home/$USER/.config/hypr
+cat > /home/$USER/.config/hypr/hyprland.conf <<EOF
 monitor=,preferred,auto,1
 
 exec-once = nm-applet &
@@ -81,7 +100,6 @@ misc {
   mouse_move_enables_dpms = true
 }
 
-# BINDINGS PENTEST
 bind = SUPER, RETURN, exec, alacritty
 bind = SUPER, D, exec, rofi -show drun
 bind = SUPER, Q, killactive
@@ -91,7 +109,6 @@ bind = SUPER, F, togglefloating
 bind = SUPER, M, exit
 bind = SUPER, SPACE, togglefloating
 
-# Workspaces
 bind = SUPER, 1, workspace, 1
 bind = SUPER, 2, workspace, 2
 bind = SUPER, 3, workspace, 3
@@ -99,6 +116,7 @@ bind = SUPER, 4, workspace, 4
 bind = SUPER, 5, workspace, 5
 EOF
 
-echo "[✓] Instalação e configuração finalizada com sucesso!"
-echo "[ℹ] Reinicie com: sudo reboot"
-echo "[➡] Depois, inicie com: startx"
+chown -R $USER:$USER /home/$USER/.config /home/$USER/.xinitrc 2>/dev/null
+
+echo "[✓] Setup finalizado com sucesso!"
+echo "[➡] Reinicie e digite: startx"
