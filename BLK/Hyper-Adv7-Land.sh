@@ -1,94 +1,82 @@
 #!/bin/bash
-# ADV7PentestStackInstaller.sh
-# Versão final full stack: Instalação completa do Hyperland + Ferramentas de Pentest + Configuração de Sessão Wayland
+# BLACKARCH_NETINSTALL_FULL.SH
+# Full autonomous setup script for ADV7Prompt deployment (BlackArch + Hyprland)
 
 set -e
 
-log() { echo -e "\033[1;32m[+] $1\033[0m"; }
-err() { echo -e "\033[1;31m[-] $1\033[0m" >&2; }
+loadkeys br-abnt2
+ping -c 2 archlinux.org
 
-log "🚀 Iniciando ADV7 Instalação Completa Full Stack"
+cfdisk /dev/sda
+mkfs.fat -F32 /dev/sda1
+mkfs.ext4 /dev/sda2
+mount /dev/sda2 /mnt
+mkdir /mnt/boot
+mount /dev/sda1 /mnt/boot
 
-# --- Atualização Base e Dependências de Desenvolvimento ---
-sudo pacman -Syu --noconfirm
-sudo pacman -S --noconfirm base-devel cmake git wayland wayland-protocols wayland-utils libxkbcommon glew \
-    glfw-x11 glfw-wayland libglvnd libinput libliftoff libdisplay-info vulkan-headers vulkan-loader \
-    vulkan-icd-loader glslang shaderc meson ninja pkg-config unzip wget neofetch zsh btop
+pacstrap /mnt base linux linux-firmware nano networkmanager grub efibootmgr sudo git vim
 
-# --- BlackArch Keyring & Ferramentas de Pentest ---
-log "🔐 Configurando repositório BlackArch e instalando ferramentas"
-if ! pacman -Qi blackarch-keyring >/dev/null 2>&1; then
-    curl -O https://blackarch.org/strap.sh
-    echo "6dc0efcbbc4cd3f4540f12d4c6cc7c493c495d96 strap.sh" | sha1sum -c || { err "Checksum inválido"; exit 1; }
-    chmod +x strap.sh && sudo ./strap.sh
-fi
-
-sudo pacman -S --noconfirm metasploit nmap sqlmap wireshark-qt burpsuite gobuster zaproxy dirb ffuf \
-    john hashcat aircrack-ng bettercap exploitdb binwalk radare2 ghidra rustscan
-
-# --- Instalação do Hyprland + Correções ---
-log "🎨 Instalando Hyprland com correções e dependências"
-if [ ! -d /opt/Hyperland ]; then
-    sudo git clone https://github.com/hyprwm/Hyprland /opt/Hyperland
-fi
-
-cd /opt/Hyperland/subprojects || mkdir -p subprojects && cd subprojects
-if [ ! -d udis86 ]; then
-    git clone https://github.com/vmt/udis86.git
-    cd udis86 && make clean || true && make && sudo make install
-else
-    log "udis86 já existente"
-fi
-
-cd /opt/Hyperland
-meson setup build || meson setup build --wipe
-meson compile -C build
-sudo ninja -C build install
-
-if ! pacman -Q aquamarine >/dev/null 2>&1; then
-    log "🔍 Instalando aquamarine via AUR (yay)"
-    if ! command -v yay >/dev/null; then
-        git clone https://aur.archlinux.org/yay.git /tmp/yay
-        cd /tmp/yay && makepkg -si --noconfirm
-    fi
-    yay -S --noconfirm aquamarine
-fi
-
-# --- Configuração do Ambiente Hyprland ---
-log "🛠️ Configurando diretórios e arquivos padrão do Hyprland"
-mkdir -p ~/.config/hypr
-cat > ~/.config/hypr/hyprland.conf << EOF
-monitor=,preferred,auto,1
-devices {
-    touchpad {
-        natural_scroll=yes
-    }
-}
-bind=SUPER,RETURN,exec,kitty
-bind=SUPER,Q,exit
-exec-once=waybar &
-exec-once=nm-applet &
-exec-once=blueman-applet &
+genfstab -U /mnt >> /mnt/etc/fstab
+arch-chroot /mnt <<EOF
+ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+hwclock --systohc
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+echo "blackarch" > /etc/hostname
+passwd
+systemctl enable NetworkManager
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
 EOF
 
-# --- Remoção do XFCE e LightDM (se presente) ---
-log "🧹 Removendo LightDM e XFCE (modo seguro)"
-sudo pacman -Rns --noconfirm lightdm lightdm-gtk-greeter xfce4 xfce4-goodies || log "LightDM/XFCE não encontrados ou já removidos"
+umount -R /mnt
+reboot
 
-# --- Configuração do Wayland como sessão padrão ---
-log "🖥️ Ajustando sessão padrão para Hyprland"
-if [ ! -f /etc/sddm.conf ]; then
-    echo "[Autologin]\nUser=$USER\nSession=hyprland.desktop" | sudo tee /etc/sddm.conf > /dev/null
-fi
+# Post-reboot Phase (run manually after boot):
+curl -O https://blackarch.org/strap.sh
+chmod +x strap.sh
+./strap.sh
+pacman -Syyu --noconfirm
+pacman -S --noconfirm blackarch
 
-# --- Script de Validação Final ---
-if [ ! -f /usr/bin/hyprland-repair.sh ]; then
-    log "✅ Criando script de verificação do Hyprland"
-    echo -e "#!/bin/bash\necho '✅ Hyperland pronto para uso!'" | sudo tee /usr/bin/hyprland-repair.sh > /dev/null
-    sudo chmod +x /usr/bin/hyprland-repair.sh
-fi
+pacman -Rns --noconfirm lightdm xfce4 xfce4-goodies
+pacman -S --noconfirm hyprland kitty foot waybar rofi wofi thunar thunar-archive-plugin
+pacman -S --noconfirm xdg-desktop-portal-hyprland xdg-desktop-portal
 
-/usr/bin/hyprland-repair.sh
-neofetch
-log "✅ ADV7 Full Stack instalado com sucesso — Hyprland + Ferramentas de Pentest prontas."
-exit 0
+mkdir -p ~/.config/hypr
+cp /usr/share/hyprland/hyprland.conf ~/.config/hypr/hyprland.conf
+
+echo 'if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]]; then exec Hyprland; fi' >> ~/.bash_profile
+
+# ZSH Aesthetic Layer
+pacman -S --noconfirm zsh zsh-autosuggestions zsh-syntax-highlighting starship
+echo "source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" >> ~/.zshrc
+echo "source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
+echo 'eval "$(starship init zsh)"' >> ~/.zshrc
+mkdir -p ~/.config && echo -e '[prompt]\nadd_newline = false\n' > ~/.config/starship.toml
+chsh -s /bin/zsh $USER
+
+# Diagnostic Loop
+cat <<'EOFLOOP' > /usr/local/bin/adv7loop.sh
+#!/bin/bash
+while true; do
+  echo "Enter option [1=Check status, 0=Exit]: "
+  read user_input
+  if [[ "$user_input" == "1" ]]; then
+    echo "System Check Output:" && uptime && df -h && free -m
+  elif [[ "$user_input" == "0" || "$user_input" == "exit" ]]; then
+    echo "Goodbye." && break
+  else
+    echo "Invalid option. Try again."
+  fi
+done
+EOFLOOP
+chmod +x /usr/local/bin/adv7loop.sh
+
+# Guest additions
+pacman -S --noconfirm virtualbox-guest-utils
+systemctl enable vboxservice
+usermod -aG vboxsf $USER
+
+echo "Setup complete. Run 'adv7loop.sh' or reboot into Hyprland."
