@@ -25,6 +25,11 @@ build_hyprland() {
   if ! command -v Hyprland &>/dev/null; then
     log "Building Hyprland from source..."
     apt update && apt install -y git build-essential
+    # Advanced: Backup or clean /opt/Hyprland if it exists and is not empty
+    if [ -d /opt/Hyprland ] && [ "$(ls -A /opt/Hyprland)" ]; then
+      log "/opt/Hyprland exists and is not empty. Backing up to /opt/Hyprland.bak.$(date +%s)"
+      mv /opt/Hyprland "/opt/Hyprland.bak.$(date +%s)"
+    fi
     git clone --depth=1 https://github.com/hyprwm/Hyprland.git /opt/Hyprland
     cd /opt/Hyprland && make all && make install
     log "Hyprland installed."
