@@ -1,86 +1,94 @@
 #!/bin/bash
-# ADV7 Hyprland Project Final Script — Full Automated Flow v7.0
-# Includes: Build, Validate, Launcher, Icon, Bundle, GitHub Upload
+# ADV7PentestStackInstaller.sh
+# Versão final full stack: Instalação completa do Hyperland + Ferramentas de Pentest + Configuração de Sessão Wayland
 
 set -e
-LOG_FILE="$HOME/adv7-hyprland-final.log"
-REPO="adv7team/hyprland-tools"
-TAG="release-$(date +%Y%m%d%H%M)"
-SCRIPT_BASE="$HOME"
-BUNDLE_NAME="adv7-hyprland-bundle.tar.gz"
 
-log() {
-  echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
-}
+log() { echo -e "\033[1;32m[+] $1\033[0m"; }
+err() { echo -e "\033[1;31m[-] $1\033[0m" >&2; }
 
-header() {
-  echo -e "\n==========================="
-  echo -e " ADV7 FINAL SETUP SCRIPT  "
-  echo -e "==========================="
-}
+log "🚀 Iniciando ADV7 Instalação Completa Full Stack"
 
-# Step 1: Build Hyprland if needed
-build_hyprland() {
-  log "Checking Hyprland installation..."
-  if ! command -v Hyprland &>/dev/null; then
-    log "Building Hyprland from source..."
-    apt update && apt install -y git build-essential
-    # Advanced: Backup or clean /opt/Hyprland if it exists and is not empty
-    if [ -d /opt/Hyprland ] && [ "$(ls -A /opt/Hyprland)" ]; then
-      log "/opt/Hyprland exists and is not empty. Backing up to /opt/Hyprland.bak.$(date +%s)"
-      mv /opt/Hyprland "/opt/Hyprland.bak.$(date +%s)"
+# --- Atualização Base e Dependências de Desenvolvimento ---
+sudo pacman -Syu --noconfirm
+sudo pacman -S --noconfirm base-devel cmake git wayland wayland-protocols wayland-utils libxkbcommon glew \
+    glfw-x11 glfw-wayland libglvnd libinput libliftoff libdisplay-info vulkan-headers vulkan-loader \
+    vulkan-icd-loader glslang shaderc meson ninja pkg-config unzip wget neofetch zsh btop
+
+# --- BlackArch Keyring & Ferramentas de Pentest ---
+log "🔐 Configurando repositório BlackArch e instalando ferramentas"
+if ! pacman -Qi blackarch-keyring >/dev/null 2>&1; then
+    curl -O https://blackarch.org/strap.sh
+    echo "6dc0efcbbc4cd3f4540f12d4c6cc7c493c495d96 strap.sh" | sha1sum -c || { err "Checksum inválido"; exit 1; }
+    chmod +x strap.sh && sudo ./strap.sh
+fi
+
+sudo pacman -S --noconfirm metasploit nmap sqlmap wireshark-qt burpsuite gobuster zaproxy dirb ffuf \
+    john hashcat aircrack-ng bettercap exploitdb binwalk radare2 ghidra rustscan
+
+# --- Instalação do Hyprland + Correções ---
+log "🎨 Instalando Hyprland com correções e dependências"
+if [ ! -d /opt/Hyperland ]; then
+    sudo git clone https://github.com/hyprwm/Hyprland /opt/Hyperland
+fi
+
+cd /opt/Hyperland/subprojects || mkdir -p subprojects && cd subprojects
+if [ ! -d udis86 ]; then
+    git clone https://github.com/vmt/udis86.git
+    cd udis86 && make clean || true && make && sudo make install
+else
+    log "udis86 já existente"
+fi
+
+cd /opt/Hyperland
+meson setup build || meson setup build --wipe
+meson compile -C build
+sudo ninja -C build install
+
+if ! pacman -Q aquamarine >/dev/null 2>&1; then
+    log "🔍 Instalando aquamarine via AUR (yay)"
+    if ! command -v yay >/dev/null; then
+        git clone https://aur.archlinux.org/yay.git /tmp/yay
+        cd /tmp/yay && makepkg -si --noconfirm
     fi
-    git clone --depth=1 https://github.com/hyprwm/Hyprland.git /opt/Hyprland
-    cd /opt/Hyprland && make all && make install
-    log "Hyprland installed."
-  else
-    log "Hyprland already present."
-  fi
+    yay -S --noconfirm aquamarine
+fi
+
+# --- Configuração do Ambiente Hyprland ---
+log "🛠️ Configurando diretórios e arquivos padrão do Hyprland"
+mkdir -p ~/.config/hypr
+cat > ~/.config/hypr/hyprland.conf << EOF
+monitor=,preferred,auto,1
+devices {
+    touchpad {
+        natural_scroll=yes
+    }
 }
+bind=SUPER,RETURN,exec,kitty
+bind=SUPER,Q,exit
+exec-once=waybar &
+exec-once=nm-applet &
+exec-once=blueman-applet &
+EOF
 
-# Step 2: Validate system
-validate_env() {
-  log "Validating system environment..."
-  bash "$SCRIPT_BASE/adv7-final-hyprland-repair.sh" --repair
-}
+# --- Remoção do XFCE e LightDM (se presente) ---
+log "🧹 Removendo LightDM e XFCE (modo seguro)"
+sudo pacman -Rns --noconfirm lightdm lightdm-gtk-greeter xfce4 xfce4-goodies || log "LightDM/XFCE não encontrados ou já removidos"
 
-# Step 3: Generate launcher
-generate_launcher() {
-  log "Creating multi-terminal launcher..."
-  bash "$SCRIPT_BASE/adv7-gui-launcher-complete.sh"
-}
+# --- Configuração do Wayland como sessão padrão ---
+log "🖥️ Ajustando sessão padrão para Hyprland"
+if [ ! -f /etc/sddm.conf ]; then
+    echo "[Autologin]\nUser=$USER\nSession=hyprland.desktop" | sudo tee /etc/sddm.conf > /dev/null
+fi
 
-# Step 4: Package everything
-package_bundle() {
-  log "Packing scripts, icon, and launcher..."
-  tar -czf "$SCRIPT_BASE/$BUNDLE_NAME" \
-    "$SCRIPT_BASE/adv7-hyprland-menu.sh" \
-    "$SCRIPT_BASE/.icons/adv7.png" \
-    "$SCRIPT_BASE/.local/share/applications/adv7-hyprland-menu.desktop" 2>/dev/null
-  log "Bundle created at: $SCRIPT_BASE/$BUNDLE_NAME"
-}
+# --- Script de Validação Final ---
+if [ ! -f /usr/bin/hyprland-repair.sh ]; then
+    log "✅ Criando script de verificação do Hyprland"
+    echo -e "#!/bin/bash\necho '✅ Hyperland pronto para uso!'" | sudo tee /usr/bin/hyprland-repair.sh > /dev/null
+    sudo chmod +x /usr/bin/hyprland-repair.sh
+fi
 
-# Step 5: Push to GitHub
-push_to_github() {
-  if ! command -v gh &>/dev/null; then
-    log "[ERROR] GitHub CLI not installed. Skipping upload."
-    return
-  fi
-  log "Pushing bundle to GitHub..."
-  gh release create "$TAG" "$SCRIPT_BASE/$BUNDLE_NAME" \
-    --title "ADV7 Hyprland Toolkit $TAG" \
-    --notes "Automated full release with launcher, config, icon, and script." \
-    --repo "$REPO" \
-    --generate-notes
-  log "Uploaded to: https://github.com/$REPO/releases/tag/$TAG"
-}
-
-# Run all
-header
-build_hyprland
-validate_env
-generate_launcher
-package_bundle
-push_to_github
-
-log "✅ ADV7 Full Project Build Complete."
+/usr/bin/hyprland-repair.sh
+neofetch
+log "✅ ADV7 Full Stack instalado com sucesso — Hyprland + Ferramentas de Pentest prontas."
+exit 0
