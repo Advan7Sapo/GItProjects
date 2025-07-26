@@ -17,5 +17,5 @@ header="#!/bin/bash
 clear
 echo "$header" > $1
 chmod 755 $1
-code $1
+micro $1
 echo "Script $1 created successfully!"

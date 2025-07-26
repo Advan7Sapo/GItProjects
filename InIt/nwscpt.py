@@ -10,8 +10,9 @@ header="#!/usr/bin/env python3
 # CreatedBy	: ADVAN7 Offensive Security | https://github.com/Advan7Sapo
 #----------------------------------------------------------------------------
 "
+
 clear
 echo "$header" > $1
 chmod 755 $1
-gedit $1
-
+micro $1
+echo "Script $1 created successfully!"
