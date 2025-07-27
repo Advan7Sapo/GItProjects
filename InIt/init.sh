@@ -14,16 +14,8 @@ echo "CookieAuthentication 1" >> /etc/tor/torrc
 sudo systemctl restart tor
 sudo systemctl enable tor
 
-# Configurar DNS seguro
-echo "nameserver 127.0.0.1" > /etc/resolv.conf
-chattr +i /etc/resolv.conf
-
 # Desabilitar IPv6 permanentemente (opcional)
 echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
-
-# Configurar DNS seguro
-echo "nameserver 127.0.0.1" > /etc/resolv.conf
-chattr +i /etc/resolv.conf
 
 # Configurar Git para usar Tor
 git config --global http.proxy socks5://127.0.0.1:9050
@@ -37,11 +29,12 @@ echo "https_proxy = 127.0.0.1:9050" >> ~/.wgetrc
 # Mullvad Install
 sudo curl -fsSLo /usr/share/keyrings/mullvad-keyring.asc https://repository.mullvad.net/deb/mullvad-keyring.asc
 echo "deb [signed-by=/usr/share/keyrings/mullvad-keyring.asc arch=$( dpkg --print-architecture )] https://repository.mullvad.net/deb/stable stable main" | sudo tee /etc/apt/sources.list.d/mullvad.list
-
 sudo apt update && sudo apt install mullvad-vpn
 
 # git config
 git config --global user.name "Advan7Sapo"
 git config --global user.email "aops@outlook.com.br"
+
+#-----------------------------------------------------------------------------------
 
 sudo systemctl status tor 
