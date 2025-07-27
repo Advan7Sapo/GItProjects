@@ -16,11 +16,12 @@ echo "DataDirectory /var/lib/tor" >> /etc/tor/torrc
 echo "Log notice file /var/log/tor/notices.log" >> /etc/tor/torrc
 echo "Log debug file /var/log/tor/debug.log" >> /etc/tor/torrc
 
-# Reiniciar Tor para aplicar as configurações
+# Reiniciar Tor 
 sudo systemctl restart tor
 sudo systemctl enable tor
 sudo systemctl start tor
-# Desabilitar IPv6 permanentemente (opcional)
+
+# Desabilitar IPv6 
 echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
 
 # Configurar Git para usar Tor
@@ -42,5 +43,5 @@ git config --global user.name "Advan7Sapo"
 git config --global user.email "aops@outlook.com.br"
 
 #-----------------------------------------------------------------------------------
-
 sudo systemctl status tor 
+
