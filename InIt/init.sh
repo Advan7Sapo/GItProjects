@@ -1,4 +1,5 @@
 #!/bin/bash
+clear 
 sudo apt update && sudo apt upgrade -y 
 sudo apt install micro -y
 sudo apt install tor -y
@@ -12,7 +13,6 @@ echo "ControlPort 9051" >> /etc/tor/torrc
 echo "CookieAuthentication 1" >> /etc/tor/torrc
 sudo systemctl restart tor
 sudo systemctl enable tor
-sudo systemctl status tor
 
 # Configurar DNS seguro
 echo "nameserver 127.0.0.1" > /etc/resolv.conf
@@ -43,3 +43,5 @@ sudo apt update && sudo apt install mullvad-vpn
 # git config
 git config --global user.name "Advan7Sapo"
 git config --global user.email "aops@outlook.com.br"
+
+sudo systemctl status tor 
