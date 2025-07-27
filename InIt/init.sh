@@ -11,9 +11,15 @@ echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
 echo "SocksPort 9050" >> /etc/tor/torrc
 echo "ControlPort 9051" >> /etc/tor/torrc
 echo "CookieAuthentication 1" >> /etc/tor/torrc
+echo "RunAsDaemon 1" >> /etc/tor/torrc
+echo "DataDirectory /var/lib/tor" >> /etc/tor/torrc
+echo "Log notice file /var/log/tor/notices.log" >> /etc/tor/torrc
+echo "Log debug file /var/log/tor/debug.log" >> /etc/tor/torrc
+
+# Reiniciar Tor para aplicar as configurações
 sudo systemctl restart tor
 sudo systemctl enable tor
-
+sudo systemctl start tor
 # Desabilitar IPv6 permanentemente (opcional)
 echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
 
