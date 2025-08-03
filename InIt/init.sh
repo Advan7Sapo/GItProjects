@@ -45,3 +45,4 @@ git config --global user.email "aops@outlook.com.br"
 #-----------------------------------------------------------------------------------
 sudo systemctl status tor 
 
+echo "IniT.sh completed successfully!"
