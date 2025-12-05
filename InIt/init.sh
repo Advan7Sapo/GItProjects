@@ -24,10 +24,6 @@ sudo systemctl start tor
 # Desabilitar IPv6 
 echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
 
-# Configurar Git para usar Tor
-git config --global http.proxy socks5://127.0.0.1:9050
-git config --global https.proxy socks5://127.0.0.1:9050
-
 # Configurar wget para usar Tor
 echo "use_proxy = on" >> ~/.wgetrc
 echo "http_proxy = 127.0.0.1:9050" >> ~/.wgetrc
